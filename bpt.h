@@ -1,7 +1,7 @@
 
 using namespace std;
 
-#define MAX_DEGREE 35//max. item of each block
+#define MAX_DEGREE 50//max. item of each block
 
 struct Chunk
 {
@@ -83,9 +83,14 @@ Block *search(uint64_t key) {
 	while (!p->is_leaf) {
 		for (int i = 0; i < MAX_DEGREE ; i++) {
 			//cout <<p->chunk.key[i]<<">";
-			if (key < p->chunk[i].key || key == p->chunk[i].key) {
+			if (key < p->chunk[i].key ) {
 				fit = true;
 				p = p->child[i];
+				break;
+			}
+			else if(key == p->chunk[i].key){
+				fit = true;
+				p = p->child[i+1];
 				break;
 			}
 		}
@@ -133,7 +138,7 @@ void adjust(Block * node, uint64_t key, int ppn,int offset,int chunksize) {
 				oldkey[i] = key;
 				oldoffset[i]=offset;
 				oldppn[i] = ppn;
-				oldchunksize[i ] =chunksize;
+				oldchunksize[i] =chunksize;
 				j++;
 			}
 			oldoffset[i + j] = current->chunk[i].offset;
@@ -160,14 +165,14 @@ void adjust(Block * node, uint64_t key, int ppn,int offset,int chunksize) {
 				if (current->is_leaf)
 					oldBlock[i + 1]->is_leaf = true;
 				else {
-					for (int k=0,j = split+1; j < MAX_DEGREE+1; k++,j++) {
-						oldBlock[i + 1]->child[k] = current->child[j];
-						current->child[j]->parent = oldBlock[i + 1];
-						current->child[j] = nullptr;
+					for (int k=0,l = split; l < MAX_DEGREE+1; k++,l++) {
+						oldBlock[i + 1]->child[k] = current->child[l];
+						current->child[l]->parent = oldBlock[i + 1];
+						current->child[l] = nullptr;
 					}
 				}
 				oldBlock[i + 1]->parent = prev;
-				oldBlock[ppos + 1]->next = oldBlock[i]->next;
+				oldBlock[i + 1]->next = oldBlock[i]->next;
 				oldBlock[i]->next = oldBlock[i + 1];
 
 				j++;
@@ -176,7 +181,7 @@ void adjust(Block * node, uint64_t key, int ppn,int offset,int chunksize) {
 
 		for (int i = 0; i< MAX_DEGREE+1; i++) {
   			if (i == ppos) {
-				for (int j = MAX_DEGREE + 1; j >=i; j--)
+				for (int j = MAX_DEGREE + 1; j >i; j--)
 					prev->chunk[j].key = prev->chunk[j-1].key;
 				prev->chunk[i].key = target;
 			}
@@ -289,5 +294,8 @@ void insert(uint64_t key, int ppn,int offset,int chunksize) {
 		//cout << "adjust\n";
 		adjust(position, key, ppn,offset,chunksize);
 	}
+	/*queue<Block *>q;
+	q.push(root);
+	printTree(q, 0);*/
 
 }
