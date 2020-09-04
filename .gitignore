@@ -4,3 +4,6 @@ a.out
 test
 testn
 ubuntu*
+*.tar.bz2
+*.rar
+*.iso

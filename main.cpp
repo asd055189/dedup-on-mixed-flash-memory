@@ -178,31 +178,40 @@ Block *srh = search(mixkey);
 	/*step 2b*/
 	else {
 		bool done=false;
-		for (int i = 0; i < MAX_DEGREE; i++) {
-			if (srh->chunk[i].key == mixkey) {
-					ifstream wtc;
-					wtc.open("./output/" + to_string(srh->chunk[i].ppn), ios::binary);
-					char *buf2 = new char[chunksize];
-					wtc.read(buf2, chunksize);
-				if (memcmp(buf2, buf, srh->chunk[i].chunksize) != 0) {
-					//cout << "mixkey collision! write to ppn: " << ppn << endl;
-					done=true;
-					tmp.ppn = ppn;
-					WTTF(buf, ppn, chunksize, actualsize);
-					insert(mixkey, ppn, offset, chunksize);
-					ppn += offset;
-					break;
-				}
-				else {
-					done=true;
-					tmp.ppn = srh->chunk[i].ppn;
-					tmp.exist = true;
-					//cout << "dedup from b+ tree! ppn&exist bit changed " << endl;
-					break;
+		while(srh->chunk[0].key<=mixkey){
+			for (int i = 0; i < MAX_DEGREE; i++) {
+				if (srh->chunk[i].key == mixkey) {
+						ifstream wtc;
+						wtc.open("./output/" + to_string(srh->chunk[i].ppn), ios::binary);
+						char *buf2 = new char[chunksize];
+						wtc.read(buf2, chunksize);
+					/*if (memcmp(buf2, buf, srh->chunk[i].chunksize) != 0) {
+						//cout << "mixkey collision! write to ppn: " << ppn << endl;
+						done=true;
+						tmp.ppn = ppn;
+						WTTF(buf, ppn, chunksize, actualsize);
+						insert(mixkey, ppn, offset, chunksize);
+						ppn += offset;
+						break;
+					}
+					else*/ if (memcmp(buf2, buf, srh->chunk[i].chunksize) == 0) {
+						done=true;
+						tmp.ppn = srh->chunk[i].ppn;
+						tmp.exist = true;
+						//cout << "dedup from b+ tree! ppn&exist bit changed " << endl;
+						break;
+					}
 				}
 			}
+			if(srh->next!=nullptr && !done){
+				//cout <<srh->chunk[0].key<<" ~ "<<srh->chunk[srh->size-1].key<<endl<<mixkey<<endl<<endl;
+				srh=srh->next;
+			}
+			else
+				break;
 		}
-		if (done==false){
+		if (!done){
+			//cout <<srh->chunk[0].key<<" ~ "<<srh->chunk[srh->size-1].key<<endl<<mixkey<<endl<<endl;
 			tmp.ppn = ppn;
 			cout << "b+ tree not found! write to ppn: " << ppn << endl;
 			WTTF(buf, ppn, chunksize, actualsize);
