@@ -177,28 +177,11 @@ int &actualsize, vector<CacheNode> &cache) {
 		while(srh->chunk[0].key<=mixkey){
 			for (int i = 0; i < MAX_DEGREE; i++) {
 				if (srh->chunk[i].key == mixkey) {
-<<<<<<< HEAD
 					ifstream wtc;
 					wtc.open("./output/" + to_string(srh->chunk[i].ppn), ios::binary);
 					char *buf2 = new char[chunksize];
 					wtc.read(buf2, chunksize);
 					if (memcmp(buf2, buf, srh->chunk[i].chunksize) == 0) {
-=======
-						ifstream wtc;
-						wtc.open("./output/" + to_string(srh->chunk[i].ppn), ios::binary);
-						char *buf2 = new char[chunksize];
-						wtc.read(buf2, chunksize);
-					/*if (memcmp(buf2, buf, srh->chunk[i].chunksize) != 0) {
-						//cout << "mixkey collision! write to ppn: " << ppn << endl;
-						done=true;
-						tmp.ppn = ppn;
-						WTTF(buf, ppn, chunksize, actualsize);
-						insert(mixkey, ppn, offset, chunksize);
-						ppn += offset;
-						break;
-					}
-					else*/ if (memcmp(buf2, buf, srh->chunk[i].chunksize) == 0) {
->>>>>>> 82e99b6f60dfae9fab282a3b3977ce39f13e141e
 						done=true;
 						tmp.ppn = srh->chunk[i].ppn;
 						tmp.exist = true;
