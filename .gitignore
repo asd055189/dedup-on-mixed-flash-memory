@@ -1,6 +1,11 @@
 a.out
 *.txt
-./output/*
+output/
 test
 testn
 ubuntu*
+*.tar.bz2
+*.rar
+*.iso
+.DS_Store
+
