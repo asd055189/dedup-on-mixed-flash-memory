@@ -1,4 +1,5 @@
 a.out
+start
 *.txt
 output/
 test
@@ -7,8 +8,4 @@ ubuntu*
 *.tar.bz2
 *.rar
 *.iso
-<<<<<<< HEAD
 .DS_Store
-
-=======
->>>>>>> 82e99b6f60dfae9fab282a3b3977ce39f13e141e
