@@ -9,12 +9,12 @@ struct CacheNode
 	int ppn=-1, offset;
 	int chunksize;
 };
-void WTTF(char * buf, int ppn, int chunksize, int &actualsize);//write to the file
+void WTTF(char * buf, int ppn, int chunksize, long long int &actualsize);//write to the file
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
-int &actualsize, vector<CacheNode> &cache);//check the b+ tree
+long long int &actualsize, vector<CacheNode> &cache);//check the b+ tree
 int main() {
 	string filename, chunksizename;
-	int writesize = 0, actualsize = 0;
+	long long int writesize = 0, actualsize = 0;
 	int cachesize = 0;
 	vector<CacheNode> cache;
 	cache.resize(500);
@@ -87,8 +87,8 @@ int main() {
 								ppn += offset;
 							}
 							else {
-							// cout << "cache is full" << endl;
-							checkbpt(buf, chunksize, sampling, ppn, pointer, actualsize, cache);
+								// cout << "cache is full" << endl;
+								checkbpt(buf, chunksize, sampling, ppn, pointer, actualsize, cache);
 							}
 						}
 					}
@@ -124,7 +124,7 @@ int main() {
 	}
 
 }
-void WTTF(char * buf, int ppn, int chunksize, int &actualsize) {
+void WTTF(char * buf, int ppn, int chunksize,long long int &actualsize) {
 	ofstream wf("./output/" + to_string(ppn), ios::out);
 	wf.write(buf, chunksize);
 	actualsize += chunksize;
@@ -133,7 +133,7 @@ void WTTF(char * buf, int ppn, int chunksize, int &actualsize) {
 }
 
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
-int &actualsize, vector<CacheNode> &cache) {
+long long int &actualsize, vector<CacheNode> &cache) {
 	/*
 	1.calculate crc & mix with sampling
 	2.search on the b+ tree
@@ -203,6 +203,7 @@ int &actualsize, vector<CacheNode> &cache) {
 			//cout << "b+ tree not found! write to ppn: " << ppn << endl;
 			WTTF(buf, ppn, chunksize, actualsize);
 			insert(mixkey, ppn, offset, chunksize);
+			tmp.exist=true;
 			ppn += offset;
 			//cout << "mixkey : " << mixkey << endl;
 		}
