@@ -74,7 +74,7 @@ void printTree(queue<Block *> q, int level) {
 Block *search(uint64_t key) {
 	Block *p = root;
 	if (root == nullptr) {
-		cout << "tree is empty\n";
+		//cout << "tree is empty\n";
 		return nullptr;
 	}
 	//cout <<"path: ";

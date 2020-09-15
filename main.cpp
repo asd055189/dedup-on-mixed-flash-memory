@@ -9,13 +9,19 @@ struct CacheNode
 	int ppn=-1, offset;
 	int chunksize;
 };
-void WTTF(char * buf, int ppn, int chunksize, long long int &actualsize);//write to the file
+
+void WTTF(char * buf, int ppn, int chunksize,long long int &actualsize);//write to the file
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
-long long int &actualsize, vector<CacheNode> &cache);//check the b+ tree
+			long long int &actualsize, vector<CacheNode> &cache,long long int &readsize,
+			long long int &sampling_hit,long long int &bpt_hit,long long int &sampling_collision,long long int &bpt_collision,
+			long long int &bpt_read);//check the b+ tree
 int main() {
 	string filename, chunksizename;
-	long long int writesize = 0, actualsize = 0;
+	long long int writesize = 0, actualsize = 0,readsize=0;
+	long long int sampling_hit=0,bpt_hit=0,sampling_collision=0,bpt_collision=0;
+	long long int sampling_read=0,bpt_read=0;
 	int cachesize = 0;
+	int chunk_num=0;
 	vector<CacheNode> cache;
 	cache.resize(500);
 	vector<CacheNode>::iterator pointer = cache.begin();
@@ -34,6 +40,7 @@ int main() {
 				cout << endl;
 				string s;
 				while (getline(Chunk_Size, s)) {
+					chunk_num++;
 					//cout << "=========next chunk=========" << writesize <<" / "<<actualsize<< endl;
 					int offset;
 
@@ -42,7 +49,6 @@ int main() {
 					writesize += chunksize; //calculate the write size
 
 					char *buf = new char[chunksize];
-
 					Data.read(buf, chunksize);
 					uint32_t sampling;
 					memcpy(&sampling, buf, sizeof(uint32_t));//sampling for first 4 Bytes
@@ -55,11 +61,15 @@ int main() {
 								break;
 							if (it->sampling == sampling) {
 								if (it->chunksize == chunksize) {
+									sampling_collision++;
 									ifstream rtc;
 									rtc.open("./output/" + to_string(it->ppn), ios::binary);
 									char* buf2 = new char[chunksize];
 									rtc.read(buf2, chunksize);
+									readsize+=chunksize;
+									sampling_read+=chunksize;
 									if (memcmp(buf2, buf, chunksize) == 0) {
+										sampling_hit++;
 										//cout << "sampling dedup! nothing happened"<<sampling << endl;
 										chksampling = true;
 										break;
@@ -71,7 +81,7 @@ int main() {
 							continue;
 						else {
 						//cout << "sampling not found!" << endl;
-							if (cachesize != 500) {
+							if (cachesize < 500) {
 								// cout << "cache is not full" << endl;
 								CacheNode tmp;
 								tmp.sampling = sampling;
@@ -88,7 +98,8 @@ int main() {
 							}
 							else {
 								// cout << "cache is full" << endl;
-								checkbpt(buf, chunksize, sampling, ppn, pointer, actualsize, cache);
+								checkbpt(buf, chunksize, sampling, ppn, pointer, actualsize, cache,readsize,sampling_hit,
+									bpt_hit,sampling_collision,bpt_collision,bpt_read);
 							}
 						}
 					}
@@ -121,6 +132,13 @@ int main() {
 			return 0;
 		}
 		cout << "written data : " << writesize << " / actual data : " << actualsize << endl;
+		cout <<"sampling_collision : "<<sampling_collision<<"/ sampling_hit : "<<sampling_hit<<endl;
+		cout <<"bpt_collision : "<<bpt_collision<<"/ bpt_hit : "<<bpt_hit<<endl;
+		cout <<"sampling_read : "<<sampling_read << "/ bpt_read : "<<bpt_read<<endl;
+		cout <<"read size : "<<readsize<<"(Bytes)"<<endl;
+		cout <<"actual write rate"<<setprecision(5)<<fixed<<double(actualsize)/writesize<<endl;
+		cout <<"# of chunk : "<<chunk_num<<endl<<"avg size : "<<(double)writesize/chunk_num<<"Bytes"<<endl;
+
 	}
 
 }
@@ -133,7 +151,9 @@ void WTTF(char * buf, int ppn, int chunksize,long long int &actualsize) {
 }
 
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
-long long int &actualsize, vector<CacheNode> &cache) {
+			long long int &actualsize, vector<CacheNode> &cache,long long int &readsize,
+			long long int &sampling_hit,long long int &bpt_hit,long long int &sampling_collision,long long int &bpt_collision,
+			long long int &bpt_read ){
 	/*
 	1.calculate crc & mix with sampling
 	2.search on the b+ tree
@@ -165,9 +185,11 @@ long long int &actualsize, vector<CacheNode> &cache) {
 	if (srh == nullptr || !srh->is_leaf) {
 		Chunk ctmp;
 		tmp.ppn = ppn;
+		tmp.exist=true;
 		//cout << "b+ tree not found! write to ppn: " << ppn << endl;
 		WTTF(buf, ppn, chunksize, actualsize);
 		insert(mixkey, ppn, offset, chunksize);
+		tmp.exist=true;
 		ppn += offset;
 		//cout << "mixkey : " << mixkey << endl;
 	}
@@ -177,11 +199,15 @@ long long int &actualsize, vector<CacheNode> &cache) {
 		while(srh->chunk[0].key<=mixkey){
 			for (int i = 0; i < MAX_DEGREE; i++) {
 				if (srh->chunk[i].key == mixkey) {
+					bpt_collision++;
 					ifstream wtc;
 					wtc.open("./output/" + to_string(srh->chunk[i].ppn), ios::binary);
 					char *buf2 = new char[chunksize];
 					wtc.read(buf2, chunksize);
+					readsize+=chunksize;
+					bpt_read+=chunksize;
 					if (memcmp(buf2, buf, srh->chunk[i].chunksize) == 0) {
+						bpt_hit++;
 						done=true;
 						tmp.ppn = srh->chunk[i].ppn;
 						tmp.exist = true;
@@ -222,6 +248,8 @@ long long int &actualsize, vector<CacheNode> &cache) {
 		wtc.open("./output/" + to_string(pointer->ppn), ios::binary);
 		char *buf2 = new char[pointer->chunksize];
 		wtc.read(buf2, pointer->chunksize);
+		readsize+=chunksize;
+		bpt_read+=chunksize;
 		uint32_t crcval = crc32(buf2, pointer->chunksize);
 		uint64_t mixkey = pointer->sampling;
 		mixkey = mixkey << 32 | crcval; //mix crc32_val and sampling_val
