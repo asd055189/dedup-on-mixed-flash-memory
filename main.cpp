@@ -14,12 +14,13 @@ void WTTF(char * buf, int ppn, int chunksize,long long int &actualsize);//write 
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
 			long long int &actualsize, vector<CacheNode> &cache,long long int &readsize,
 			long long int &sampling_hit,long long int &bpt_hit,long long int &sampling_collision,long long int &bpt_collision,
-			long long int &bpt_read);//check the b+ tree
+			long long int &bpt_read,int &num_of_read_page);//check the b+ tree
 int main() {
 	string filename, chunksizename;
 	long long int writesize = 0, actualsize = 0,readsize=0;
 	long long int sampling_hit=0,bpt_hit=0,sampling_collision=0,bpt_collision=0;
 	long long int sampling_read=0,bpt_read=0;
+	int num_of_read_page=0;
 	int cachesize = 0;
 	int chunk_num=0;
 	vector<CacheNode> cache;
@@ -50,8 +51,14 @@ int main() {
 
 					char *buf = new char[chunksize];
 					Data.read(buf, chunksize);
+					bitset<32> s;
 					uint32_t sampling;
-					memcpy(&sampling, buf, sizeof(uint32_t));//sampling for first 4 Bytes
+					int shift=0;
+					for (int i=0,j=0;j<32;i+=(chunksize/32),j++){
+						s.set(j,buf[i]&0x01);
+					}
+					sampling=s.to_ulong();
+					//memcpy(&sampling, buf, sizeof(uint32_t));//sampling for first 4 Bytes
 					//cout << "sampling : " << sampling << endl;
 					bool chksampling = false;
 					if (cachesize != 0) {
@@ -67,8 +74,10 @@ int main() {
 									char* buf2 = new char[chunksize];
 									rtc.read(buf2, chunksize);
 									readsize+=chunksize;
+									num_of_read_page+=offset;
 									sampling_read+=chunksize;
 									if (memcmp(buf2, buf, chunksize) == 0) {
+
 										sampling_hit++;
 										//cout << "sampling dedup! nothing happened"<<sampling << endl;
 										chksampling = true;
@@ -99,7 +108,7 @@ int main() {
 							else {
 								// cout << "cache is full" << endl;
 								checkbpt(buf, chunksize, sampling, ppn, pointer, actualsize, cache,readsize,sampling_hit,
-									bpt_hit,sampling_collision,bpt_collision,bpt_read);
+									bpt_hit,sampling_collision,bpt_collision,bpt_read,num_of_read_page);
 							}
 						}
 					}
@@ -138,6 +147,7 @@ int main() {
 		cout <<"read size : "<<readsize<<"(Bytes)"<<endl;
 		cout <<"actual write rate"<<setprecision(5)<<fixed<<double(actualsize)/writesize<<endl;
 		cout <<"# of chunk : "<<chunk_num<<endl<<"avg size : "<<(double)writesize/chunk_num<<"Bytes"<<endl;
+		cout <<"num_of_read_page : " <<num_of_read_page<<endl;
 
 	}
 
@@ -153,7 +163,7 @@ void WTTF(char * buf, int ppn, int chunksize,long long int &actualsize) {
 void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<CacheNode>::iterator &pointer,
 			long long int &actualsize, vector<CacheNode> &cache,long long int &readsize,
 			long long int &sampling_hit,long long int &bpt_hit,long long int &sampling_collision,long long int &bpt_collision,
-			long long int &bpt_read ){
+			long long int &bpt_read ,int &num_of_read_page){
 	/*
 	1.calculate crc & mix with sampling
 	2.search on the b+ tree
@@ -205,6 +215,7 @@ void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<Cach
 					char *buf2 = new char[chunksize];
 					wtc.read(buf2, chunksize);
 					readsize+=chunksize;
+					num_of_read_page+=srh->chunk[i].offset;
 					bpt_read+=chunksize;
 					if (memcmp(buf2, buf, srh->chunk[i].chunksize) == 0) {
 						bpt_hit++;
@@ -250,6 +261,7 @@ void checkbpt(char *buf, int chunksize, uint32_t sampling, int &ppn, vector<Cach
 		wtc.read(buf2, pointer->chunksize);
 		readsize+=chunksize;
 		bpt_read+=chunksize;
+		num_of_read_page+=pointer->offset;
 		uint32_t crcval = crc32(buf2, pointer->chunksize);
 		uint64_t mixkey = pointer->sampling;
 		mixkey = mixkey << 32 | crcval; //mix crc32_val and sampling_val
