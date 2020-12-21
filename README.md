@@ -1,3 +1,7 @@
+大專生科技部計畫，實做程式碼
+
+please prechunk the file first, ref `https://github.com/asd055189/cdc`
+
 compile command
 `g++ main.cpp`
 
@@ -7,4 +11,4 @@ step1.
 step2.
 `[filename] [chunksize.txt]`
 
-please prechunk the file first
+
